@@ -1,4 +1,4 @@
-import { AsyncStorage } from 'react-native';
+import AsyncStorage from '@react-native-community/async-storage';
 
 import Data from '../Data';
 import { hashPassword } from '../../lib/utils';
@@ -99,13 +99,14 @@ module.exports = {
     }
     Data.notify('change');
   },
-  _loginWithToken(value) {
+  _loginWithToken(value, callback) {
     Data._tokenIdSaved = value;
     if (value !== null) {
       this._startLoggingIn();
       call('login', { resume: value }, (err, result) => {
         this._endLoggingIn();
         this._handleLoginCallback(err, result);
+        typeof callback == 'function' && callback(err);
       });
     } else {
       this._endLoggingIn();
