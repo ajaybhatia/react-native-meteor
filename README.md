@@ -1,4 +1,4 @@
-# react-native-meteor
+# @ajaybhatia/react-native-meteor
 
 Meteor-like methods for React Native.
 
