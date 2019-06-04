@@ -96,8 +96,6 @@ export default withTracker(params => {
 - Théo Mathieu ([@Mokto](https://github.com/Mokto)) from [inProgress](https://in-progress.io)
 - Nicolas Charpentier ([@charpeni](https://github.com/charpeni))
 
-![image](https://user-images.githubusercontent.com/7189823/40546483-68c5e734-5ffd-11e8-8dd4-bdd11d9fbc93.png)
-
 ## Want to help ?
 
 Pull Requests and issues reported are welcome! :)
