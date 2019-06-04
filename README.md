@@ -2,9 +2,6 @@
 
 Meteor-like methods for React Native.
 
-If you have questions, you can open a new issue in the repository or ask in the our Gitter chat:
-https://gitter.im/react-native-meteor/Lobby
-
 ## What is it for ?
 
 The purpose of this library is :
@@ -16,13 +13,13 @@ The purpose of this library is :
 ## Install
 
 ```
-yarn add react-native-meteor
+yarn add @ajaybhatia/react-native-meteor
 ```
 
 or
 
 ```
-npm i --save react-native-meteor
+npm i --save @ajaybhatia/react-native-meteor
 ```
 
 [!! See detailed installation guide](https://github.com/ajaybhatia/react-native-meteor/blob/master/docs/Install.md)
@@ -49,7 +46,7 @@ There was a [bug in the react native websocket android implementation](https://g
 ```javascript
 import React, { Component } from 'react';
 import { View, Text } from 'react-native';
-import Meteor, { withTracker, MeteorListView } from 'react-native-meteor';
+import Meteor, { withTracker, MeteorListView } from '@ajaybhatia/react-native-meteor';
 
 Meteor.connect('ws://192.168.X.X:3000/websocket'); //do this only once
 
