@@ -73,7 +73,7 @@ import Meteor, { useTracker } from '@ajaybhatia/react-native-meteor';
 
 Meteor.connect('ws://192.168.X.X:3000/websocket'); //do this only once
 
-export default App = ({ settings, todos, todosReady }) => {
+export default App = () => {
   const loading = useTracker(() => {
     const handle = Meteor.subscribe('todos');
     Meteor.subscribe('settings');
