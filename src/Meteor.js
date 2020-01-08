@@ -11,7 +11,6 @@ import Data from './Data';
 import { Collection } from './Collection';
 import call from './Call';
 
-import Mixin from './components/Mixin';
 import withTracker from './components/ReactMeteorData';
 import useTracker from './components/TrackerHook';
 import composeWithTracker from './components/composeWithTracker';
@@ -41,9 +40,6 @@ module.exports = {
   useTracker,
   getData() {
     return Data;
-  },
-  connectMeteor(reactClass) {
-    return reactMixin.onClass(reactClass, Mixin);
   },
   ...User,
   status() {
