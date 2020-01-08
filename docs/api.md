@@ -2,8 +2,6 @@
 
 ## Reactive variables
 
-These variables can be used inside getMeteorData or createContainer. They will be populated into your component if they change.
-
 - [Meteor.subscribe()](http://docs.meteor.com/#/full/meteor_subscribe)
 - Meteor.collection(collectionName, options)
   - [.find(selector, options)](http://docs.meteor.com/#/full/find)
