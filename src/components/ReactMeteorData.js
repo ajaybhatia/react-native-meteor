@@ -5,7 +5,7 @@ import Data from '../Data';
 import MeteorDataManager from './MeteorDataManager';
 
 const ReactMeteorData = {
-  UNSAFE_componentWillMount() {
+  conponentDidMount() {
     Data.waitDdpReady(() => {
       if (this.getMeteorData) {
         this.data = {};
@@ -16,7 +16,7 @@ const ReactMeteorData = {
     });
   },
 
-  UNSAFE_componentWillUpdate(nextProps, nextState) {
+  static getDerivedStateFromProps(nextProps, nextState) {
     if (this.startMeteorSubscriptions) {
       if (
         !EJSON.equals(this.state, nextState) ||

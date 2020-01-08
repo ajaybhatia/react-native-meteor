@@ -167,7 +167,7 @@ export class Collection {
   }
 
   helpers(helpers) {
-    var self = this;
+    let self = this;
     let _transform;
 
     if (this._transform && !this._helpers) _transform = this._transform;
@@ -207,7 +207,7 @@ function wrapTransform(transform) {
   // No need to doubly-wrap transforms.
   if (transform.__wrappedTransform__) return transform;
 
-  var wrapped = function(doc) {
+  let wrapped = doc => {
     if (!_.has(doc, '_id')) {
       // XXX do we ever have a transform on the oplog's collection? because that
       // collection has no _id.
@@ -216,7 +216,7 @@ function wrapTransform(transform) {
 
     var id = doc._id;
     // XXX consider making tracker a weak dependency and checking Package.tracker here
-    var transformed = Tracker.nonreactive(function() {
+    let transformed = Tracker.nonreactive(() => {
       return transform(doc);
     });
 

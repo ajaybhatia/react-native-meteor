@@ -5,7 +5,7 @@ import Data from '../Data';
 import setProperties from './setProperties';
 
 if (!EJSON._getTypes()['FS.File']) {
-  EJSON.addType('FS.File', function(value) {
+  EJSON.addType('FS.File', value => {
     return {
       getFileRecord() {
         const collection =
@@ -26,29 +26,29 @@ export default function(name) {
   const collectionName = 'cfs.' + name + '.filerecord';
 
   return {
-    find(selector, options) {
+    find: (selector, options) => {
       const elems = Collection(collectionName).find(selector, options);
       return elems.map(elem => {
         return setProperties(name, elem);
       });
     },
-    findOne(selector, options) {
+    findOne: (selector, options) => {
       const elem = Collection(collectionName).findOne(selector, options);
       return elem && setProperties(name, elem);
     },
-    insert: function() {
+    insert: () => {
       Collection.apply(Meteor, [collectionName]).insert.apply(
         Meteor,
         arguments
       );
     },
-    update: function() {
+    update: () => {
       Collection.apply(Meteor, [collectionName]).update.apply(
         Meteor,
         arguments
       );
     },
-    remove: function() {
+    remove: () => {
       Collection.apply(Meteor, [collectionName]).remove.apply(
         Meteor,
         arguments

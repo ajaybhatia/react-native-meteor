@@ -21,7 +21,7 @@ export default class FSCollectionImagesPreloader extends Component {
       items: [],
     };
   }
-  componentWillMount() {
+  componentDidMount() {
     const { collection, selector } = this.props;
 
     this.update = results => {

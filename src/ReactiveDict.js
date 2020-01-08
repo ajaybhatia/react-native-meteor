@@ -2,12 +2,12 @@ import EJSON from 'ejson';
 
 import Data from './Data';
 
-const stringify = function(value) {
+const stringify = value => {
   if (value === undefined) return 'undefined';
   return EJSON.stringify(value);
 };
 
-const parse = function(serialized) {
+const parse = serialized => {
   if (serialized === undefined || serialized === 'undefined') return undefined;
   return EJSON.parse(serialized);
 };
