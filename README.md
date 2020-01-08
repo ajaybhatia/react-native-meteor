@@ -83,12 +83,11 @@ export default App = () => {
 
   const todos = useTracker(
     () => Meteor.collection('todos').find({}, { sort: { createdAt: -1 } }),
-    []
+    [loading]
   );
-  const settings = useTracker(
-    () => Meteor.collection('settings').findOne(),
-    []
-  );
+  const settings = useTracker(() => Meteor.collection('settings').findOne(), [
+    loading,
+  ]);
 
   if (loading) {
     return (
