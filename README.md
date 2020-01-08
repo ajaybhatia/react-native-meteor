@@ -28,7 +28,7 @@ npm i --save @ajaybhatia/react-native-meteor
 
 There was a [bug in the react native websocket android implementation](https://github.com/react-native-community/react-native-releases/blob/master/CHANGELOG.md#android-specific) that meant the close event wasn't being received from the server. Therefore RN versions prior to React-native 0.57.8 will not detect users being logged out from the server side. There could also be other bugs resulting from this.
 
-## Example usage
+## Example usage (with withTracker)
 
 ```javascript
 import React from 'react';
@@ -62,6 +62,54 @@ export default withTracker(params => {
     settings: Meteor.collection('settings').findOne(),
   };
 })(App);
+```
+
+## Example usage (with useTracker hook)
+
+```javascript
+import React from 'react';
+import { View, Text, FlatList } from 'react-native';
+import Meteor, { useTracker } from '@ajaybhatia/react-native-meteor';
+
+Meteor.connect('ws://192.168.X.X:3000/websocket'); //do this only once
+
+export default App = ({ settings, todos, todosReady }) => {
+  const loading = useTracker(() => {
+    const handle = Meteor.subscribe('todos');
+    Meteor.subscribe('settings');
+
+    return !handle.ready();
+  }, []);
+
+  const todos = useTracker(
+    () => Meteor.collection('todos').find({}, { sort: { createdAt: -1 } }),
+    []
+  );
+  const settings = useTracker(
+    () => Meteor.collection('settings').findOne(),
+    []
+  );
+
+  if (loading) {
+    return (
+      <View>
+        <Text>Not ready</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View>
+      {loading && <Text>Not ready</Text>}
+
+      <FlatList
+        data={todos}
+        keyExtractor={item => item._id}
+        renderItem={({ item }) => <Text>{item.title}</Text>}
+      />
+    </View>
+  );
+};
 ```
 
 ## Documentation

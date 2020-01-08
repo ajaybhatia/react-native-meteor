@@ -14,6 +14,7 @@ import call from './Call';
 import Mixin from './components/Mixin';
 import createContainer from './components/createContainer';
 import withTracker from './components/ReactMeteorData';
+import useTracker from './components/TrackerHook';
 import composeWithTracker from './components/composeWithTracker';
 
 import FSCollection from './CollectionFS/FSCollection';
@@ -39,6 +40,7 @@ module.exports = {
   FSCollection,
   createContainer,
   withTracker,
+  useTracker,
   getData() {
     return Data;
   },
