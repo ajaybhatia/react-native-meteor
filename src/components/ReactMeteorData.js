@@ -4,8 +4,8 @@ import EJSON from 'ejson';
 import Data from '../Data';
 import MeteorDataManager from './MeteorDataManager';
 
-class ReactPureComponent extends React.PureComponent {
-  componentDidMount() {
+const ReactMeteorData = {
+  UNSAFE_componentWillMount() {
     Data.waitDdpReady(() => {
       if (this.getMeteorData) {
         this.data = {};
@@ -14,7 +14,7 @@ class ReactPureComponent extends React.PureComponent {
         this._meteorDataManager.updateData(newData);
       }
     });
-  }
+  },
 
   UNSAFE_componentWillUpdate(nextProps, nextState) {
     if (this.startMeteorSubscriptions) {
@@ -48,7 +48,7 @@ class ReactPureComponent extends React.PureComponent {
 
       this._meteorDataManager.updateData(newData);
     }
-  }
+  },
 
   componentWillUnmount() {
     if (this._meteorDataManager) {
@@ -58,8 +58,15 @@ class ReactPureComponent extends React.PureComponent {
     if (this._meteorSubscriptionsManager) {
       this._meteorSubscriptionsManager.dispose();
     }
-  }
-}
+  },
+};
+
+export { ReactMeteorData };
+
+class ReactComponent extends React.Component {}
+Object.assign(ReactComponent.prototype, ReactMeteorData);
+class ReactPureComponent extends React.PureComponent {}
+Object.assign(ReactPureComponent.prototype, ReactMeteorData);
 
 export default function connect(options) {
   let expandedOptions = options;
@@ -69,10 +76,11 @@ export default function connect(options) {
     };
   }
 
-  const { getMeteorData } = expandedOptions;
+  const { getMeteorData, pure = true } = expandedOptions;
 
+  const BaseComponent = pure ? ReactPureComponent : ReactComponent;
   return WrappedComponent =>
-    class ReactMeteorDataComponent extends ReactPureComponent {
+    class ReactMeteorDataComponent extends BaseComponent {
       getMeteorData() {
         return getMeteorData(this.props);
       }
