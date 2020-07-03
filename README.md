@@ -1,132 +1,96 @@
-# @ajaybhatia/react-native-meteor
+# Meteor React Native
+A set of packages allowing you to connect your React Native app to your Meteor server, and take advantage of Meteor-specific features like accounts, reactive data trackers, etc.
 
-Meteor-like methods for React Native.
+[Full API Documentation](/docs/api.md)
 
-## What is it for ?
+If you're new to React Native, you can view a guide to using React Native with Meteor on the [Official Meteor Guide](https://guide.meteor.com/react-native.html)
 
-The purpose of this library is :
+# Installation
+1. `npm install --save @ajaybhatia/react-native-meteor`
+2. Confirm you have peer dependencty `@react-native-community/netinfo` installed
+3. Confirm you have `@react-native-community/async-storage@>=1.8.1` installed. If you are using Expo, or otherwise cannot use `@react-native-community/async-storage`, see *Custom Storage Adapter* below.
 
-- To set up and maintain a ddp connection with a ddp server, freeing the developer from having to do it on their own.
-- Be fully compatible with react-native and help react-native developers.
-- **To match with [Meteor documentation](http://docs.meteor.com/) used with React.**
 
-## Install
-
-```
-yarn add @ajaybhatia/react-native-meteor
-```
-
-or
-
-```
-npm i --save @ajaybhatia/react-native-meteor
-```
-
-[!! See detailed installation guide](https://github.com/ajaybhatia/react-native-meteor/blob/master/docs/Install.md)
-
-### Warning < RN 0.57.8 Android bug
-
-There was a [bug in the react native websocket android implementation](https://github.com/react-native-community/react-native-releases/blob/master/CHANGELOG.md#android-specific) that meant the close event wasn't being received from the server. Therefore RN versions prior to React-native 0.57.8 will not detect users being logged out from the server side. There could also be other bugs resulting from this.
-
-## Example usage (with withTracker)
+### A note on AsyncStorage
+This package uses `@react-native-community/async-storage` by default. This may cause issues if you are using certain React Native versions, or if you are using Expo. To use a custom AsyncStorage implementation, pass it as an option in `Meteor.connect`:
 
 ```javascript
-import React from 'react';
-import { View, Text, FlatList } from 'react-native';
-import Meteor, { withTracker } from '@ajaybhatia/react-native-meteor';
+import { AsyncStorage } from 'react-native';
 
-Meteor.connect('ws://192.168.X.X:3000/websocket'); //do this only once
+// ...
 
-const App = ({ settings, todos, todosReady }) => {
-  return (
-    <View>
-      <Text>{settings.title}</Text>
-      {!todosReady && <Text>Not ready</Text>}
-
-      <FlatList
-        data={todos}
-        keyExtractor={item => item._id}
-        renderItem={({ item }) => <Text>{item.title}</Text>}
-      />
-    </View>
-  );
-};
-
-export default withTracker(params => {
-  const handle = Meteor.subscribe('todos');
-  Meteor.subscribe('settings');
-
-  return {
-    todosReady: handle.ready(),
-    todos: Meteor.collection('todos').find({}, { sort: { createdAt: -1 } }),
-    settings: Meteor.collection('settings').findOne(),
-  };
-})(App);
+Meteor.connect("wss://myapp.meteor.com/websocket", { AsyncStorage });
 ```
 
-## Example usage (with useTracker hook)
+If you are using the `AsyncStorage` API yourself, its important that you use the same version that MeteorRN is using, or issues could be caused due to the conflicting versions. Make sure you are using the same AsyncStorage you pass into Meteor (or `@react-native-community/async-storage` if you aren't passing anything), or you can use [MeteorRN's package interface](#package-interface).
+
+# Basic Usage
 
 ```javascript
-import React from 'react';
-import { View, Text, FlatList } from 'react-native';
-import Meteor, { useTracker } from '@ajaybhatia/react-native-meteor';
+import Meteor, { Mongo, withTracker } from '@ajaybhatia/react-native-meteor';
 
-Meteor.connect('ws://192.168.X.X:3000/websocket'); //do this only once
+let MyCol = new Mongo.Collection("mycol");
 
-export default App = () => {
-  const loading = useTracker(() => {
-    const handle = Meteor.subscribe('todos');
-    Meteor.subscribe('settings');
+Meteor.connect("wss://myapp.meteor.com/websocket"); // Note the /websocket after your URL
 
-    return !handle.ready();
-  }, []);
+class App extends React.Component {
+    render() {
+        let {myThing} = this.props;
 
-  const todos = useTracker(
-    () => Meteor.collection('todos').find({}, { sort: { createdAt: -1 } }),
-    [loading]
-  );
-  const settings = useTracker(() => Meteor.collection('settings').findOne(), [
-    loading,
-  ]);
+        return (
+            <View>
+                <Text>Here is the thing: {myThing.name}</Text>
+            </View>
+        );
+    }
+}
 
-  if (loading) {
-    return (
-      <View>
-        <Text>Not ready</Text>
-      </View>
-    );
-  }
+let AppContainer = withTracker(() => {
+    Meteor.subscribe("myThing");
+    let myThing = MyCol.findOne();
 
-  return (
-    <View>
-      {loading && <Text>Not ready</Text>}
+    return {
+        myThing
+    };
+})(App)
 
-      <FlatList
-        data={todos}
-        keyExtractor={item => item._id}
-        renderItem={({ item }) => <Text>{item.title}</Text>}
-      />
-    </View>
-  );
-};
+export default AppContainer;
 ```
 
-## Documentation
+# Companion Packages
 
-- Learn how to getting started from [connecting your components](docs/connect-your-components.md).
-- The [API reference](docs/api.md) lists all public APIs.
-- Visit the [How To ?](docs/how-to.md) section for further information.
+There are a few official companion packages available to add new features. Some packages provide a polyfill for Atmosphere packages, others simplify your app's integration with Native features (like local data storage).
 
-## Author
+Beta Packages:
+- [`@jaybhatia/ndev-mfa`](/companion-packages/ndev-mfa): Package that allows your RN app to work with `meteor/ndev:mfa`
+- [`@jaybhatia/local`](/companion-packages/local): Package for storing of data locally that works seamlessly with MeteorRN by injecting data into a local minimongo collection
 
-- Ajay Bhatia ([@ajaybhatia](https://github.com/ajaybhatia))
-- Théo Mathieu ([@Mokto](https://github.com/Mokto)) from [inProgress](https://in-progress.io)
-- Nicolas Charpentier ([@charpeni](https://github.com/charpeni))
+Planned/Upcoming Packages:
+- `@jaybhatia/queued-calls`: Package that allows you to queue Meteor calls that will be performed when internet/server is available
 
-## Want to help ?
+If you have an idea for a companion package, please open an issue. If you would like to publish your own companion package, we recommend a package name with the prefix `mrn-`.
 
-Pull Requests and issues reported are welcome! :)
+# Compatibility
+For React Native >=0.60.0 use this package
 
-## License
+For React Native <0.60.0 use [react-native-meteor](https://github.com/inProgress-team/react-native-meteor).
 
-react-native-meteor is [MIT Licensed](LICENSE).
+**Migrating from `react-native-meteor`:**
+- cursoredFind is no longer an option. All .find() calls will return cursors (to match Meteor)
+- `MeteorListView` & `MeteorComplexListView` have been removed
+- `CollectionFS` has been removed
+- `createContainer` has been removed
+- Mixins (`connectMeteor`) have been removed
+- `composeWithTracker` has been removed
+
+# Package Interface
+
+To ensure that MeteorRN companion packages use the same versions of external packages like AsyncStorage as the core, `@ajaybhatia/react-native-meteor` provides a package interface, where companion packages can access certain packages. Currently package interface returns an object with the following properties:
+- AsyncStorage
+
+### Usage
+````
+import Meteor from '@ajaybhatia/react-native-meteor';
+
+const {AsyncStorage} = Meteor.packageInterface();
+````
