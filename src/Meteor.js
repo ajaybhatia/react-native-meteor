@@ -1,22 +1,17 @@
-import { Platform, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
-import reactMixin from 'react-mixin';
 import Trackr from 'trackr';
 import EJSON from 'ejson';
 import DDP from '../lib/ddp.js';
 import Random from '../lib/Random';
 
 import Data from './Data';
-import { Collection } from './Collection';
+import Mongo from './Mongo';
+import { Collection, runObservers, localCollections } from './Collection';
 import call from './Call';
 
 import withTracker from './components/ReactMeteorData';
 import useTracker from './components/TrackerHook';
-import composeWithTracker from './components/composeWithTracker';
-
-import FSCollection from './CollectionFS/FSCollection';
-import FSCollectionImagesPreloader from './CollectionFS/FSCollectionImagesPreloader';
 
 import ReactiveDict from './ReactiveDict';
 
@@ -24,18 +19,16 @@ import User from './user/User';
 import Accounts from './user/Accounts';
 
 module.exports = {
-  composeWithTracker,
   Accounts,
+  Mongo,
   Tracker: Trackr,
   EJSON,
   ReactiveDict,
   Collection,
-  FSCollectionImagesPreloader:
-    Platform.OS == 'android' ? View : FSCollectionImagesPreloader,
   collection(name, options) {
+    console.warn('Meteor.collection is deprecated. Use Mongo.Collection');
     return new Collection(name, options);
   },
-  FSCollection,
   withTracker,
   useTracker,
   getData() {
@@ -58,7 +51,7 @@ module.exports = {
     }
   },
   _subscriptionsRestart() {
-    for (var i in Data.subscriptions) {
+    for (let i in Data.subscriptions) {
       const sub = Data.subscriptions[i];
       Data.ddp.unsub(sub.subIdRemember);
       sub.subIdRemember = Data.ddp.sub(sub.name, sub.params);
@@ -68,9 +61,30 @@ module.exports = {
   reconnect() {
     Data.ddp && Data.ddp.connect();
   },
+  packageInterface: () => {
+    return {
+      AsyncStorage:
+        Data._options.AsyncStorage ||
+        require('@react-native-community/async-storage').default,
+    };
+  },
   connect(endpoint, options) {
     if (!endpoint) endpoint = Data._endpoint;
     if (!options) options = Data._options;
+
+    if (!options.AsyncStorage) {
+      const AsyncStorage = require('@react-native-community/async-storage')
+        .default;
+
+      if (AsyncStorage) {
+        options.AsyncStorage = AsyncStorage;
+      } else {
+        throw new Error(
+          'No AsyncStorage detected. Import an AsyncStorage package and add to `options` in the Meteor.connect() method',
+          e
+        );
+      }
+    }
 
     Data._endpoint = endpoint;
     Data._options = options;
@@ -81,17 +95,22 @@ module.exports = {
       ...options,
     });
 
-    NetInfo.addEventListener(state => {
-      if (state.isConnected && Data.ddp.autoReconnect) {
-        Data.ddp.connect();
+    NetInfo.addEventListener(
+      ({ type, isConnected, isInternetReachable, isWifiEnabled }) => {
+        if (isConnected && Data.ddp.autoReconnect) {
+          Data.ddp.connect();
+        }
       }
-    });
+    );
 
     Data.ddp.on('connected', () => {
       // Clear the collections of any stale data in case this is a reconnect
       if (Data.db && Data.db.collections) {
-        for (var collection in Data.db.collections) {
-          Data.db[collection].remove({});
+        for (let collection in Data.db.collections) {
+          if (!localCollections.includes(collection)) {
+            // Dont clear data from local collections
+            Data.db[collection].remove({});
+          }
         }
       }
 
@@ -122,19 +141,23 @@ module.exports = {
       if (!Data.db[message.collection]) {
         Data.db.addCollection(message.collection);
       }
-      Data.db[message.collection].upsert({
+      const document = {
         _id: message.id,
         ...message.fields,
-      });
+      };
+
+      Data.db[message.collection].upsert(document);
+
+      runObservers('added', message.collection, document);
     });
 
     Data.ddp.on('ready', message => {
       const idsMap = new Map();
-      for (var i in Data.subscriptions) {
+      for (let i in Data.subscriptions) {
         const sub = Data.subscriptions[i];
         idsMap.set(sub.subIdRemember, sub.id);
       }
-      for (var i in message.subs) {
+      for (let i in message.subs) {
         const subId = idsMap.get(message.subs[i]);
         if (subId) {
           const sub = Data.subscriptions[subId];
@@ -153,17 +176,31 @@ module.exports = {
         });
       }
 
-      Data.db[message.collection] &&
-        Data.db[message.collection].upsert({
+      if (Data.db[message.collection]) {
+        const document = {
           _id: message.id,
           ...message.fields,
           ...unset,
+        };
+
+        const oldDocument = Data.db[message.collection].findOne({
+          _id: message.id,
         });
+
+        Data.db[message.collection].upsert(document);
+
+        runObservers('changed', message.collection, document, oldDocument);
+      }
     });
 
     Data.ddp.on('removed', message => {
-      Data.db[message.collection] &&
+      if (Data.db[message.collection]) {
+        const oldDocument = Data.db[message.collection].findOne({
+          _id: message.id,
+        });
         Data.db[message.collection].del(message.id);
+        runObservers('removed', message.collection, oldDocument);
+      }
     });
     Data.ddp.on('result', message => {
       const call = Data.calls.find(call => call.id == message.id);
@@ -176,7 +213,7 @@ module.exports = {
     });
 
     Data.ddp.on('nosub', message => {
-      for (var i in Data.subscriptions) {
+      for (let i in Data.subscriptions) {
         const sub = Data.subscriptions[i];
         if (sub.subIdRemember == message.id) {
           console.warn('No subscription existing for', sub.name);
@@ -185,10 +222,10 @@ module.exports = {
     });
   },
   subscribe(name) {
-    var params = Array.prototype.slice.call(arguments, 1);
-    var callbacks = {};
+    let params = Array.prototype.slice.call(arguments, 1);
+    let callbacks = {};
     if (params.length) {
-      var lastParam = params[params.length - 1];
+      let lastParam = params[params.length - 1];
       if (typeof lastParam == 'function') {
         callbacks.onReady = params.pop();
       } else if (
@@ -221,7 +258,7 @@ module.exports = {
     // them all active.
 
     let existing = false;
-    for (var i in Data.subscriptions) {
+    for (let i in Data.subscriptions) {
       const sub = Data.subscriptions[i];
       if (sub.inactive && sub.name === name && EJSON.equals(sub.params, params))
         existing = sub;
@@ -272,14 +309,14 @@ module.exports = {
     }
 
     // return a handle to the application.
-    var handle = {
+    let handle = {
       stop: function() {
         if (Data.subscriptions[id]) Data.subscriptions[id].stop();
       },
       ready: function() {
         if (!Data.subscriptions[id]) return false;
 
-        var record = Data.subscriptions[id];
+        let record = Data.subscriptions[id];
         record.readyDeps.depend();
         return record.ready;
       },

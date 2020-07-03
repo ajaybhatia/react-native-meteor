@@ -1,0 +1,14 @@
+{
+  "name": "@ajaybhatia/local",
+  "version": "1.0.0-beta1",
+  "description": "Store data locally",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "peerDependencies": {
+    "@ajaybhatia/react-native-meteor":">=2.0.0"
+  }
+}

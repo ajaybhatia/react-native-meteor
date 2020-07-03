@@ -1,85 +1,129 @@
-# API
+## Meteor
 
-## Reactive variables
+`import Meteor from '@ajaybhatia/react-native-meteor';`
 
-- [Meteor.subscribe()](http://docs.meteor.com/#/full/meteor_subscribe)
-- Meteor.collection(collectionName, options)
-  - [.find(selector, options)](http://docs.meteor.com/#/full/find)
-  - [.findOne(selector, options)](http://docs.meteor.com/#/full/findone)
-- [Meteor.user()](http://docs.meteor.com/#/full/meteor_user)
-- [Meteor.userId()](http://docs.meteor.com/#/full/meteor_userid)
-- [Meteor.status()](http://docs.meteor.com/#/full/meteor_status)
-- [Meteor.loggingIn()](http://docs.meteor.com/#/full/meteor_loggingin)
-- [ReactiveDict()](https://atmospherejs.com/meteor/reactive-dict)
+### `Meteor.connect(url, options)`
 
-## Additionals collection methods
+Connect to the Meteor Server
 
-These methods (except update) work offline. That means that elements are correctly updated offline, and when you reconnect to ddp, Meteor calls are taken care of.
+**url**: The URL of your Meteor Server websocket. This should typically start with `ws://` (insecure, like `http://`) or `wss://` (secure, like `https://`), and have the path `/websocket`, e.g.: `wss://myapp.meteor.com/websocket`
 
-- Meteor.collection(collectionName, options)
-  - [.insert(doc, callback)](http://docs.meteor.com/#/full/insert)
-  - [.update(id, modifier, [options], [callback])](http://docs.meteor.com/#/full/update)
-  - [.remove(id, callback(err, countRemoved))](http://docs.meteor.com/#/full/remove)
+**options**:
 
-## Meteor Collections
+- autoConnect **boolean** [true] whether to establish the connection to the server upon instantiation. When false, one can manually establish the connection with the Meteor.ddp.connect method.
+- autoReconnect **boolean** [true] whether to try to reconnect to the server when the socket connection closes, unless the closing was initiated by a call to the disconnect method.
+- reconnectInterval **number** [10000] the interval in ms between reconnection attempts.
+- AsyncStorage **object** your preferred AsyncStorage. Defaults to `'@react-native-community/async-storage'` as a peer dependency. You will likely want to use `{ AsyncStorage } from 'react-native'` if using Expo
 
-### Meteor.subscribe
+### `Meteor.disconnect()`
 
-[Meteor.subscribe()](http://docs.meteor.com/#/full/meteor_subscribe) returns an handle. If the component which called subscribe is unmounted, the subscription is automatically canceled.
+Disconnect from the Meteor server
 
-### Meteor.collection(collectionName, options)
+### `Meteor.call(name, [arg1, arg2...], [asyncCallback])`
 
-You need pass the `cursoredFind` option when you get your collection if you want to use cursor-like method:
+Perform a call to a method
+
+### `Meteor.subscribe(name, [arg1, arg2, arg3])`
+
+Subscribe to a collection
+
+### `Meteor.user()`
+
+Returns the logged in user
+
+### `Meteor.users`
+
+Access the meteor users collection
+
+### `Meteor.userId()`
+
+Returns the userId of the logged in user
+
+### `Meteor.status()`
+
+Gets the current connection status. Returns an object with the following properties:
+
+**connected**: Boolean
+
+**status**: "connected" || "disconnected"
+
+### `Meteor.loggingIn()`
+
+Returns true if attempting to login
+
+### `Meteor.loginWithPassword`
+
+### `Meteor.logout`
+
+### `Meteor.logoutOtherClients`
+
+## withTracker
+
+`import { withTracker } from '@ajaybhatia/react-native-meteor'`;
+
+The `withTracker` component is used the same way as [`meteor/react-meteor-data`](https://guide.meteor.com/react.html#using-withTracker)
 
 ```javascript
-Meteor.collection('collectionName', { cursoredFind: true });
+export default withTracker(() => {
+  let handle = Meteor.subscribe('mySubscription');
+  let loading = !handle.ready();
+  let myStuff = Stuff.find({}).fetch();
+
+  return {
+    myStuff,
+  };
+})(MyComponent);
 ```
 
-Or you can simply use `find()` to get an array of documents. The option default to false for backward compatibility. Cursor methods are available to share code more easily between a react-native app and a standard Meteor app.
+## useTracker (Experimental)
 
-## Meteor DDP connection
+`import { useTracker } from '@ajaybhatia/react-native-meteor'`;
 
-### Meteor.connect(endpoint, options)
+The `useTracker` component is used the same way as [`meteor/react-meteor-data`](https://github.com/meteor/react-packages/tree/master/packages/react-meteor-data#usetrackerreactivefn-deps-hook)
 
-Connect to a DDP server. You only have to do this once in your app.
+```javascript
+function Foo({ listId }) {
+  const currentUser = useTracker(() => Meteor.user(), []);
 
-_Arguments_
+  const listLoading = useTracker(() => {
+    const handle = Meteor.subscribe('todoList', listId);
+    return !handle.ready();
+  }, [listId]);
+  const tasks = useTracker(() => Tasks.find({ listId }).fetch(), [listId]);
 
-- `url` **string** _required_
-- `options` **object** Available options are :
-  - autoConnect **boolean** [true] whether to establish the connection to the server upon instantiation. When false, one can manually establish the connection with the Meteor.ddp.connect method.
-  - autoReconnect **boolean** [true] whether to try to reconnect to the server when the socket connection closes, unless the closing was initiated by a call to the disconnect method.
-  - reconnectInterval **number** [10000] the interval in ms between reconnection attempts.
+  return (
+    ...
+  );
+}
+```
 
-### Meteor.disconnect()
+## ReactiveDict
 
-Disconnect from the DDP server.
+`import { ReactiveDict } from '@ajaybhatia/react-native-meteor'`
 
-## Meteor methods
+https://atmospherejs.com/meteor/reactive-dict
 
-- [Meteor.call](http://docs.meteor.com/#/full/meteor_call)
-- [Meteor.loginWithPassword](http://docs.meteor.com/#/full/meteor_loginwithpassword) (Please note that user is auto-resigned in - like in Meteor Web applications - thanks to React Native AsyncStorage.)
-- [Meteor.logout](http://docs.meteor.com/#/full/meteor_logout)
-- [Meteor.logoutOtherClients](http://docs.meteor.com/#/full/meteor_logoutotherclients)
+## Mongo
 
-## Availables packages
+`import { Mongo } from '@ajaybhatia/react-native-meteor';`
 
-### Convenience packages
+#### `Mongo.Collection(collectionName, options)`
 
-Example `import { composeWithTracker } from 'react-native-meteor';`
+_collectionName_: Name of the remote collection, or pass `null` for a client-side collection
 
-- EJSON
-- Tracker
-- composeWithTracker: If you want to use [react-komposer](https://github.com/kadirahq/react-komposer), you can use react-native-meteor compatible composeWithTracker
-- Accounts (see below)
+**options**:
 
-### ReactiveDict
+- [.insert(doc, callback)](http://docs.meteor.com/#/full/insert)
+- [.update(id, modifier, [options], [callback])](http://docs.meteor.com/#/full/update)
+- [.remove(id, callback(err, countRemoved))](http://docs.meteor.com/#/full/remove)
 
-See [documentation](https://atmospherejs.com/meteor/reactive-dict).
+#### _Cursor_.observe
 
-### Meteor.Accounts
+Mirrors Meteor's observe behavior. Accepts object with the properties `added`, `changed`, and `removed`.
 
-`import { Accounts } from 'react-native-meteor';`
+## Accounts
+
+`import { Accounts } from '@ajaybhatia/react-native-meteor';`
 
 - [Accounts.createUser](http://docs.meteor.com/#/full/accounts_createuser)
 - [Accounts.changePassword](http://docs.meteor.com/#/full/accounts_forgotpassword)
@@ -87,26 +131,4 @@ See [documentation](https://atmospherejs.com/meteor/reactive-dict).
 - [Accounts.resetPassword](http://docs.meteor.com/#/full/accounts_resetpassword)
 - [Accounts.onLogin](http://docs.meteor.com/#/full/accounts_onlogin)
 - [Accounts.onLoginFailure](http://docs.meteor.com/#/full/accounts_onloginfailure)
-
-### FSCollection
-
-- Meteor.FSCollection(collectionName) : Helper for [Meteor-CollectionFS](https://github.com/CollectionFS/Meteor-CollectionFS). Full documentation [here](https://github.com/inProgress-team/react-native-meteor/blob/master/docs/FSCollection.md)
-- This plugin also exposes a FSCollectionImagesPreloader component which helps you preload every image you want in CollectionFS (only available on ios)
-
-```javascript
-import { FSCollectionImagesPreloader } from 'react-native-meteor';
-
-<FSCollectionImagesPreloader
-  collection="imagesFiles"
-  selector={{metadata.owner: XXX}}
-/>
-```
-
-### Meteor.ddp
-
-Once connected to the ddp server, you can access every method available in [ddp.js](https://github.com/mondora/ddp.js/).
-
-- Meteor.ddp.on('connected')
-- Meteor.ddp.on('added')
-- Meteor.ddp.on('changed')
-- ...
+- `Accounts._hashPassword` - SHA-256 hashes password, for use with methods that may require authentication

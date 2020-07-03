@@ -7,10 +7,38 @@ import Random from '../lib/Random';
 import call from './Call';
 import { isPlainObject } from '../lib/utils.js';
 
+const observers = {};
+
+export const runObservers = (type, collection, newDocument, oldDocument) => {
+  if (observers[collection]) {
+    observers[collection].forEach(({ cursor, callbacks }) => {
+      if (callbacks[type]) {
+        if (
+          Data.db[collection].findOne({
+            $and: [{ _id: newDocument._id }, cursor._selector],
+          })
+        ) {
+          try {
+            callbacks[type](newDocument, oldDocument);
+          } catch (e) {
+            console.error('Error in observe callback', e);
+          }
+        }
+      }
+    });
+  }
+};
+
+const _registerObserver = (collection, cursor, callbacks) => {
+  observers[collection] = observers[collection] || [];
+  observers[collection].push({ cursor, callbacks });
+};
+
 class Cursor {
-  constructor(collection, docs) {
+  constructor(collection, docs, selector) {
     this._docs = docs || [];
     this._collection = collection;
+    this._selector = selector;
   }
 
   count() {
@@ -34,14 +62,25 @@ class Cursor {
       ? this._docs.map(this._collection._transform)
       : this._docs;
   }
+
+  observe(callbacks) {
+    _registerObserver(this._collection._collection.name, this, callbacks);
+  }
 }
+
+export const localCollections = [];
 
 export class Collection {
   constructor(name, options = {}) {
+    if (name === null) {
+      this.localCollection = true;
+      name = Random.id();
+      localCollections.push(name);
+    }
+
     if (!Data.db[name]) Data.db.addCollection(name);
 
     this._collection = Data.db[name];
-    this._cursoredFind = options.cursoredFind;
     this._name = name;
     this._transform = wrapTransform(options.transform);
   }
@@ -62,13 +101,7 @@ export class Collection {
       docs = this._collection.find(selector, options);
     }
 
-    if (this._cursoredFind) {
-      result = new Cursor(this, docs);
-    } else {
-      if (docs && this._transform) docs = docs.map(this._transform);
-
-      result = docs;
-    }
+    result = new Cursor(this, docs, selector);
 
     return result;
   }
@@ -77,9 +110,7 @@ export class Collection {
     let result = this.find(selector, options);
 
     if (result) {
-      if (this._cursoredFind) result = result.fetch();
-
-      result = result[0];
+      result = result.fetch()[0];
     }
 
     return result;
@@ -106,16 +137,19 @@ export class Collection {
       });
 
     this._collection.upsert(item);
-    Data.waitDdpConnected(() => {
-      call(`/${this._name}/insert`, item, err => {
-        if (err) {
-          this._collection.del(id);
-          return callback(err);
-        }
 
-        callback(null, id);
+    if (!this.localCollection) {
+      Data.waitDdpConnected(() => {
+        call(`/${this._name}/insert`, item, err => {
+          if (err) {
+            this._collection.del(id);
+            return callback(err);
+          }
+
+          callback(null, id);
+        });
       });
-    });
+    }
 
     return id;
   }
@@ -135,15 +169,17 @@ export class Collection {
     // change mini mongo for optimize UI changes
     this._collection.upsert({ _id: id, ...modifier.$set });
 
-    Data.waitDdpConnected(() => {
-      call(`/${this._name}/update`, { _id: id }, modifier, err => {
-        if (err) {
-          return callback(err);
-        }
+    if (!this.localCollection) {
+      Data.waitDdpConnected(() => {
+        call(`/${this._name}/update`, { _id: id }, modifier, err => {
+          if (err) {
+            return callback(err);
+          }
 
-        callback(null, id);
+          callback(null, id);
+        });
       });
-    });
+    }
   }
 
   remove(id, callback = () => {}) {
@@ -152,15 +188,17 @@ export class Collection {
     if (element) {
       this._collection.del(element._id);
 
-      Data.waitDdpConnected(() => {
-        call(`/${this._name}/remove`, { _id: id }, (err, res) => {
-          if (err) {
-            this._collection.upsert(element);
-            return callback(err);
-          }
-          callback(null, res);
+      if (!this.localCollection) {
+        Data.waitDdpConnected(() => {
+          call(`/${this._name}/remove`, { _id: id }, (err, res) => {
+            if (err) {
+              this._collection.upsert(element);
+              return callback(err);
+            }
+            callback(null, res);
+          });
         });
-      });
+      }
     } else {
       callback(`No document with _id : ${id}`);
     }
@@ -214,7 +252,7 @@ function wrapTransform(transform) {
       throw new Error('can only transform documents with _id');
     }
 
-    var id = doc._id;
+    let id = doc._id;
     // XXX consider making tracker a weak dependency and checking Package.tracker here
     let transformed = Tracker.nonreactive(() => {
       return transform(doc);

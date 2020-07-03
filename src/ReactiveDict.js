@@ -2,12 +2,12 @@ import EJSON from 'ejson';
 
 import Data from './Data';
 
-const stringify = value => {
+const stringify = function(value) {
   if (value === undefined) return 'undefined';
   return EJSON.stringify(value);
 };
 
-const parse = serialized => {
+const parse = function(serialized) {
   if (serialized === undefined || serialized === 'undefined') return undefined;
   return EJSON.parse(serialized);
 };
@@ -16,7 +16,7 @@ export default class ReactiveDict {
   constructor(dictName) {
     this.keys = {};
     if (typeof dictName === 'object') {
-      for (var i in dictName) {
+      for (let i in dictName) {
         this.keys[i] = stringify(dictName[i]);
       }
     }

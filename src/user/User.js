@@ -1,21 +1,22 @@
-import AsyncStorage from '@react-native-community/async-storage';
-
 import Data from '../Data';
 import { hashPassword } from '../../lib/utils';
 import call from '../Call';
+import Mongo from '../Mongo';
 
 const TOKEN_KEY = 'reactnativemeteor_usertoken';
+const Users = new Mongo.Collection('users');
 
 module.exports = {
+  users: Users,
   user() {
     if (!this._userIdSaved) return null;
 
-    return this.collection('users').findOne(this._userIdSaved);
+    return Users.findOne(this._userIdSaved);
   },
   userId() {
     if (!this._userIdSaved) return null;
 
-    const user = this.collection('users').findOne(this._userIdSaved);
+    const user = Users.findOne(this._userIdSaved);
     return user && user._id;
   },
   _isLoggingIn: true,
@@ -31,7 +32,7 @@ module.exports = {
     });
   },
   handleLogout() {
-    AsyncStorage.removeItem(TOKEN_KEY);
+    Data._options.AsyncStorage.removeItem(TOKEN_KEY);
     Data._tokenIdSaved = null;
     this._userIdSaved = null;
   },
@@ -89,7 +90,7 @@ module.exports = {
   _handleLoginCallback(err, result) {
     if (!err) {
       //save user id and token
-      AsyncStorage.setItem(TOKEN_KEY, result.token);
+      Data._options.AsyncStorage.setItem(TOKEN_KEY, result.token);
       Data._tokenIdSaved = result.token;
       this._userIdSaved = result.id;
       Data.notify('onLogin');
@@ -99,14 +100,13 @@ module.exports = {
     }
     Data.notify('change');
   },
-  _loginWithToken(value, callback) {
+  _loginWithToken(value) {
     Data._tokenIdSaved = value;
     if (value !== null) {
       this._startLoggingIn();
       call('login', { resume: value }, (err, result) => {
         this._endLoggingIn();
         this._handleLoginCallback(err, result);
-        typeof callback == 'function' && callback(err);
       });
     } else {
       this._endLoggingIn();
@@ -118,7 +118,7 @@ module.exports = {
   async _loadInitialUser() {
     var value = null;
     try {
-      value = await AsyncStorage.getItem(TOKEN_KEY);
+      value = await Data._options.AsyncStorage.getItem(TOKEN_KEY);
     } catch (error) {
       console.warn('AsyncStorage error: ' + error.message);
     } finally {
