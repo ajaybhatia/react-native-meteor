@@ -16,13 +16,14 @@ export const runObservers = (type, collection, newDocument, oldDocument) => {
         if (
           Data.db[collection].findOne({
             $and: [{ _id: newDocument._id }, cursor._selector],
-          })
-        ) {
+          }) && type !== 'removed') {
           try {
             callbacks[type](newDocument, oldDocument);
           } catch (e) {
             console.error('Error in observe callback', e);
           }
+        }else{
+          callbacks['removed'](newDocument);
         }
       }
     });
