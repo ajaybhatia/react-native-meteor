@@ -10,15 +10,22 @@ import Mongo from './Mongo';
 import { Collection, runObservers, localCollections } from './Collection';
 import call from './Call';
 
-import withTracker from './components/ReactMeteorData';
-import useTracker from './components/TrackerHook';
+import withTracker from './components/withTracker';
+import useTracker from './components/useTracker';
 
 import ReactiveDict from './ReactiveDict';
 
 import User from './user/User';
 import Accounts from './user/Accounts';
 
+let isVerbose = false;
+
 module.exports = {
+  isVerbose,
+  enableVerbose() {
+    isVerbose = true;
+  },
+  Random,
   Accounts,
   Mongo,
   Tracker: Trackr,
@@ -26,7 +33,7 @@ module.exports = {
   ReactiveDict,
   Collection,
   collection(name, options) {
-    console.warn('Meteor.collection is deprecated. Use Mongo.Collection');
+    console.error('Meteor.collection is deprecated. Use Mongo.Collection');
     return new Collection(name, options);
   },
   withTracker,
@@ -72,6 +79,15 @@ module.exports = {
     if (!endpoint) endpoint = Data._endpoint;
     if (!options) options = Data._options;
 
+    if (
+      (!endpoint.startsWith('ws') || !endpoint.endsWith('/websocket')) &&
+      !options.suppressUrlErrors
+    ) {
+      throw new Error(
+        `Your url "${endpoint}" may be in the wrong format. It should start with "ws://" or "wss://" and end with "/websocket", e.g. "wss://myapp.meteor.com/websocket". To disable this warning, connect with option "suppressUrlErrors" as true, e.g. Meteor.connect("${endpoint}", {suppressUrlErrors:true});`
+      );
+    }
+
     if (!options.AsyncStorage) {
       const AsyncStorage = require('@react-native-community/async-storage')
         .default;
@@ -80,8 +96,7 @@ module.exports = {
         options.AsyncStorage = AsyncStorage;
       } else {
         throw new Error(
-          'No AsyncStorage detected. Import an AsyncStorage package and add to `options` in the Meteor.connect() method',
-          e
+          'No AsyncStorage detected. Import an AsyncStorage package and add to `options` in the Meteor.connect() method'
         );
       }
     }
@@ -116,7 +131,9 @@ module.exports = {
 
       Data.notify('change');
 
-      console.info('Connected to DDP server.');
+      if (isVerbose) {
+        console.info('Connected to DDP server.');
+      }
       this._loadInitialUser().then(() => {
         this._subscriptionsRestart();
       });
@@ -126,7 +143,9 @@ module.exports = {
     Data.ddp.on('disconnected', () => {
       Data.notify('change');
 
-      console.info('Disconnected from DDP server.');
+      if (isVerbose) {
+        console.info('Disconnected from DDP server.');
+      }
 
       if (!Data.ddp.autoReconnect) return;
 
@@ -346,3 +365,5 @@ module.exports = {
     return handle;
   },
 };
+
+export default module.exports;
