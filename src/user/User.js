@@ -1,32 +1,32 @@
 import Data from '../Data';
 import { hashPassword } from '../../lib/utils';
-import call from '../Call';
 import Mongo from '../Mongo';
+import Meteor from '../Meteor.js';
 
 const TOKEN_KEY = 'reactnativemeteor_usertoken';
 const Users = new Mongo.Collection('users');
 
-module.exports = {
+const User = {
   users: Users,
   user() {
-    if (!this._userIdSaved) return null;
+    if (!User._userIdSaved) return null;
 
-    return Users.findOne(this._userIdSaved);
+    return Users.findOne(User._userIdSaved);
   },
   userId() {
-    if (!this._userIdSaved) return null;
+    if (!User._userIdSaved) return null;
 
-    const user = Users.findOne(this._userIdSaved);
+    const user = Users.findOne(User._userIdSaved);
     return user && user._id;
   },
   _isLoggingIn: true,
   loggingIn() {
-    return this._isLoggingIn;
+    return User._isLoggingIn;
   },
   logout(callback) {
-    call('logout', err => {
-      this.handleLogout();
-      this.connect();
+    Meteor.call('logout', err => {
+      User.handleLogout();
+      Meteor.connect();
 
       typeof callback == 'function' && callback(err);
     });
@@ -34,7 +34,7 @@ module.exports = {
   handleLogout() {
     Data._options.AsyncStorage.removeItem(TOKEN_KEY);
     Data._tokenIdSaved = null;
-    this._userIdSaved = null;
+    User._userIdSaved = null;
   },
   loginWithPassword(selector, password, callback) {
     if (typeof selector === 'string') {
@@ -42,87 +42,99 @@ module.exports = {
       else selector = { email: selector };
     }
 
-    this._startLoggingIn();
-    call(
+    User._startLoggingIn();
+    Meteor.call(
       'login',
       {
         user: selector,
         password: hashPassword(password),
       },
       (err, result) => {
-        this._endLoggingIn();
+        User._endLoggingIn();
 
-        this._handleLoginCallback(err, result);
+        User._handleLoginCallback(err, result);
 
         typeof callback == 'function' && callback(err);
       }
     );
   },
   logoutOtherClients(callback = () => {}) {
-    call('getNewToken', (err, res) => {
+    Meteor.call('getNewToken', (err, res) => {
       if (err) return callback(err);
 
-      this._handleLoginCallback(err, res);
+      User._handleLoginCallback(err, res);
 
-      call('removeOtherTokens', err => {
+      Meteor.call('removeOtherTokens', err => {
         callback(err);
       });
     });
   },
   _login(user, callback) {
-    this._startLoggingIn();
-    this.call('login', user, (err, result) => {
-      this._endLoggingIn();
+    User._startLoggingIn();
+    Meteor.call('login', user, (err, result) => {
+      User._endLoggingIn();
 
-      this._handleLoginCallback(err, result);
+      User._handleLoginCallback(err, result);
 
       typeof callback == 'function' && callback(err);
     });
   },
   _startLoggingIn() {
-    this._isLoggingIn = true;
+    User._isLoggingIn = true;
     Data.notify('loggingIn');
   },
   _endLoggingIn() {
-    this._isLoggingIn = false;
+    User._isLoggingIn = false;
     Data.notify('loggingIn');
   },
   _handleLoginCallback(err, result) {
     if (!err) {
-      //save user id and token
+      Meteor.isVerbose &&
+        console.info(
+          'User._handleLoginCallback::: token:',
+          result.token,
+          'id:',
+          result.id
+        );
       Data._options.AsyncStorage.setItem(TOKEN_KEY, result.token);
       Data._tokenIdSaved = result.token;
-      this._userIdSaved = result.id;
+      User._userIdSaved = result.id;
       Data.notify('onLogin');
     } else {
+      Meteor.isVerbose &&
+        console.info('User._handleLoginCallback::: error:', err);
       Data.notify('onLoginFailure');
-      this.handleLogout();
+      User.handleLogout();
     }
     Data.notify('change');
   },
   _loginWithToken(value) {
     Data._tokenIdSaved = value;
     if (value !== null) {
-      this._startLoggingIn();
-      call('login', { resume: value }, (err, result) => {
-        this._endLoggingIn();
-        this._handleLoginCallback(err, result);
+      Meteor.isVerbose && console.info('User._loginWithToken::: token:', value);
+      User._startLoggingIn();
+      Meteor.call('login', { resume: value }, (err, result) => {
+        User._endLoggingIn();
+        User._handleLoginCallback(err, result);
       });
     } else {
-      this._endLoggingIn();
+      Meteor.isVerbose && console.info('User._loginWithToken::: token is null');
+      User._endLoggingIn();
     }
   },
   getAuthToken() {
     return Data._tokenIdSaved;
   },
   async _loadInitialUser() {
-    var value = null;
+    let value = null;
     try {
       value = await Data._options.AsyncStorage.getItem(TOKEN_KEY);
     } catch (error) {
       console.warn('AsyncStorage error: ' + error.message);
     } finally {
-      this._loginWithToken(value);
+      User._loginWithToken(value);
     }
   },
 };
+
+export default User;

@@ -13,7 +13,9 @@ export const runObservers = (type, collection, newDocument, oldDocument) => {
   if (observers[collection]) {
     observers[collection].forEach(({ cursor, callbacks }) => {
       if (callbacks[type]) {
-        if (
+        if (type === 'removed') {
+          callbacks['removed'](newDocument);
+        } else if (
           Data.db[collection].findOne({
             $and: [{ _id: newDocument._id }, cursor._selector],
           })
@@ -157,7 +159,6 @@ export class Collection {
   update(id, modifier, options = {}, callback = () => {}) {
     if (typeof options == 'function') {
       callback = options;
-      options = {};
     }
 
     if (!this._collection.get(id))
@@ -205,7 +206,6 @@ export class Collection {
   }
 
   helpers(helpers) {
-    let self = this;
     let _transform;
 
     if (this._transform && !this._helpers) _transform = this._transform;
@@ -245,7 +245,7 @@ function wrapTransform(transform) {
   // No need to doubly-wrap transforms.
   if (transform.__wrappedTransform__) return transform;
 
-  let wrapped = doc => {
+  let wrapped = function(doc) {
     if (!_.has(doc, '_id')) {
       // XXX do we ever have a transform on the oplog's collection? because that
       // collection has no _id.
@@ -254,7 +254,7 @@ function wrapTransform(transform) {
 
     let id = doc._id;
     // XXX consider making tracker a weak dependency and checking Package.tracker here
-    let transformed = Tracker.nonreactive(() => {
+    let transformed = Tracker.nonreactive(function() {
       return transform(doc);
     });
 
