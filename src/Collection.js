@@ -1,6 +1,5 @@
-import Tracker from 'trackr';
+import Tracker from './Tracker.js';
 import EJSON from 'ejson';
-import _ from 'underscore';
 
 import Data from './Data';
 import Random from '../lib/Random';
@@ -142,7 +141,7 @@ export class Collection {
 
     if (!this.localCollection) {
       Data.waitDdpConnected(() => {
-        call(`/${this._name}/insert`, item, err => {
+        call(`/${this._name}/insert`, item, (err) => {
           if (err) {
             this._collection.del(id);
             return callback(err);
@@ -172,7 +171,7 @@ export class Collection {
 
     if (!this.localCollection) {
       Data.waitDdpConnected(() => {
-        call(`/${this._name}/update`, { _id: id }, modifier, err => {
+        call(`/${this._name}/update`, { _id: id }, modifier, (err) => {
           if (err) {
             return callback(err);
           }
@@ -212,9 +211,9 @@ export class Collection {
 
     if (!this._helpers) {
       this._helpers = function Document(doc) {
-        return _.extend(this, doc);
+        return Object.assign(this, doc);
       };
-      this._transform = doc => {
+      this._transform = (doc) => {
         if (_transform) {
           doc = _transform(doc);
         }
@@ -222,11 +221,22 @@ export class Collection {
       };
     }
 
-    _.each(helpers, (helper, key) => {
+    helpers.forEach((helper, key) => {
       this._helpers.prototype[key] = helper;
     });
   }
 }
+
+const has = function (obj, key) {
+  let keyParts = key.split('.');
+
+  return (
+    !!obj &&
+    (keyParts.length > 1
+      ? has(obj[key.split('.')[0]], keyParts.slice(1).join('.'))
+      : hasOwnProperty.call(obj, key))
+  );
+};
 
 //From Meteor core
 
@@ -245,8 +255,8 @@ function wrapTransform(transform) {
   // No need to doubly-wrap transforms.
   if (transform.__wrappedTransform__) return transform;
 
-  let wrapped = function(doc) {
-    if (!_.has(doc, '_id')) {
+  let wrapped = function (doc) {
+    if (!has(doc, '_id')) {
       // XXX do we ever have a transform on the oplog's collection? because that
       // collection has no _id.
       throw new Error('can only transform documents with _id');
@@ -254,7 +264,7 @@ function wrapTransform(transform) {
 
     let id = doc._id;
     // XXX consider making tracker a weak dependency and checking Package.tracker here
-    let transformed = Tracker.nonreactive(function() {
+    let transformed = Tracker.nonreactive(function () {
       return transform(doc);
     });
 
@@ -262,7 +272,7 @@ function wrapTransform(transform) {
       throw new Error('transform must return object');
     }
 
-    if (_.has(transformed, '_id')) {
+    if (has(transformed, '_id')) {
       if (!EJSON.equals(transformed._id, id)) {
         throw new Error("transformed document can't have different _id");
       }

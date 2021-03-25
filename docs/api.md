@@ -1,46 +1,46 @@
-## Meteor
+# Meteor React Native Docs
+
+Table of Contents
+- [Meteor](#meteor)
+- [Tracker](#tracker)
+- [Mongo](#mongo)
+- [Accounts](#accounts)
+
+<h2 id="meteor">Meteor</h2>
 
 `import Meteor from '@ajaybhatia/react-native-meteor';`
 
-### `Meteor.connect(url, options)`
 
+### `Meteor.connect(url, options)`
 Connect to the Meteor Server
 
 **url**: The URL of your Meteor Server websocket. This should typically start with `ws://` (insecure, like `http://`) or `wss://` (secure, like `https://`), and have the path `/websocket`, e.g.: `wss://myapp.meteor.com/websocket`
 
 **options**:
-
-- autoConnect **boolean** [true] whether to establish the connection to the server upon instantiation. When false, one can manually establish the connection with the Meteor.ddp.connect method.
-- autoReconnect **boolean** [true] whether to try to reconnect to the server when the socket connection closes, unless the closing was initiated by a call to the disconnect method.
-- reconnectInterval **number** [10000] the interval in ms between reconnection attempts.
-- AsyncStorage **object** your preferred AsyncStorage. Defaults to `'@react-native-community/async-storage'` as a peer dependency. You will likely want to use `{ AsyncStorage } from 'react-native'` if using Expo
+* autoConnect **boolean** [true] whether to establish the connection to the server upon instantiation. When false, one can manually establish the connection with the Meteor.ddp.connect method.
+* autoReconnect **boolean** [true] whether to try to reconnect to the server when the socket connection closes, unless the closing was initiated by a call to the disconnect method.
+* reconnectInterval **number** [10000] the interval in ms between reconnection attempts.
+* AsyncStorage **object** your preferred AsyncStorage. Defaults to `'@react-native-async-storage/async-storage'` as a peer dependency.
 
 ### `Meteor.disconnect()`
-
 Disconnect from the Meteor server
 
 ### `Meteor.call(name, [arg1, arg2...], [asyncCallback])`
-
 Perform a call to a method
 
 ### `Meteor.subscribe(name, [arg1, arg2, arg3])`
-
 Subscribe to a collection
 
 ### `Meteor.user()`
-
 Returns the logged in user
 
 ### `Meteor.users`
-
 Access the meteor users collection
 
 ### `Meteor.userId()`
-
 Returns the userId of the logged in user
 
 ### `Meteor.status()`
-
 Gets the current connection status. Returns an object with the following properties:
 
 **connected**: Boolean
@@ -48,7 +48,6 @@ Gets the current connection status. Returns an object with the following propert
 **status**: "connected" || "disconnected"
 
 ### `Meteor.loggingIn()`
-
 Returns true if attempting to login
 
 ### `Meteor.loginWithPassword`
@@ -57,78 +56,127 @@ Returns true if attempting to login
 
 ### `Meteor.logoutOtherClients`
 
-## withTracker
 
-`import { withTracker } from '@ajaybhatia/react-native-meteor'`;
 
-The `withTracker` component is used the same way as [`meteor/react-meteor-data`](https://guide.meteor.com/react.html#using-withTracker)
+<h2 id="tracker">Tracker</h2>
 
-```javascript
-export default withTracker(() => {
-  let handle = Meteor.subscribe('mySubscription');
-  let loading = !handle.ready();
-  let myStuff = Stuff.find({}).fetch();
+`import { withTracker, useTracker } from '@ajaybhatia/react-native-meteor'`;
 
-  return {
-    myStuff,
-  };
-})(MyComponent);
-```
 
-## useTracker (Experimental)
+#### `withTracker(trackerFunc)(Component)`
+Creates a new Tracker
 
-`import { useTracker } from '@ajaybhatia/react-native-meteor'`;
+**Arguments:**
+  * trackerFunc - Function which will be re-run reactively when it's dependencies are updated. Must return an object that is passed as properties to `Component`
+  * Component - React Component which will receive properties from trackerFunc
 
-The `useTracker` component is used the same way as [`meteor/react-meteor-data`](https://github.com/meteor/react-packages/tree/master/packages/react-meteor-data#usetrackerreactivefn-deps-hook)
 
-```javascript
-function Foo({ listId }) {
-  const currentUser = useTracker(() => Meteor.user(), []);
+#### `useTracker(trackerFunc)` => `React Hook`
+Creates a new Tracker React Hook. Can only be used inside a function component. See React Docs for more info.
 
-  const listLoading = useTracker(() => {
-    const handle = Meteor.subscribe('todoList', listId);
-    return !handle.ready();
-  }, [listId]);
-  const tasks = useTracker(() => Tasks.find({ listId }).fetch(), [listId]);
+**Arguments:**
+  * trackerFunc - Function which will be re-run reactively when it's dependencies are updated.
 
-  return (
-    ...
-  );
-}
-```
+
 
 ## ReactiveDict
 
 `import { ReactiveDict } from '@ajaybhatia/react-native-meteor'`
 
-https://atmospherejs.com/meteor/reactive-dict
+#### `new ReactiveDict()` => *`ReactiveDict`*
+Creates a new reactive dictionary
 
-## Mongo
+
+#### *`ReactiveDict`*
+
+***ReactiveDict* Methods:**
+  * .get(key) - Gets value of key (Reactive)
+  * .set(key, value) - Sets value of key
+
+
+
+<h2 id="mongo">Mongo</h2>
 
 `import { Mongo } from '@ajaybhatia/react-native-meteor';`
 
-#### `Mongo.Collection(collectionName, options)`
+#### `new Mongo.Collection(collectionName, options)` => `Collection`
+Creates and returns a *Collection*
 
-_collectionName_: Name of the remote collection, or pass `null` for a client-side collection
+**Arguments**
+  * collectionName - Name of the remote collection, or pass `null` for a client-side collection
 
-**options**:
 
-- [.insert(doc, callback)](http://docs.meteor.com/#/full/insert)
-- [.update(id, modifier, [options], [callback])](http://docs.meteor.com/#/full/update)
-- [.remove(id, callback(err, countRemoved))](http://docs.meteor.com/#/full/remove)
+#### *`Collection`*
 
-#### _Cursor_.observe
+***Collection* Methods:**
+  * .insert(document) - Inserts document into collection
+  * .update(query, modifications) - Updates document in collection
+  * .remove(query) - Removes document from collection
+  * .find(query) => *`Cursor`* - Returns a Cursor
+  * .findOne(query) => Document - Retrieves first matching Document
 
-Mirrors Meteor's observe behavior. Accepts object with the properties `added`, `changed`, and `removed`.
 
-## Accounts
+#### *`Cursor`*
+
+***Cursor* Methods:**
+  * .obsrve() - Mirrors Meteor's observe behavior. Accepts object with the properties `added`, `changed`, and `removed`.
+  * .fetch() => `[Document]` - Retrieves an array of matching documents
+
+
+
+<h2 id="accounts">Accounts</h2>
 
 `import { Accounts } from '@ajaybhatia/react-native-meteor';`
 
-- [Accounts.createUser](http://docs.meteor.com/#/full/accounts_createuser)
-- [Accounts.changePassword](http://docs.meteor.com/#/full/accounts_forgotpassword)
-- [Accounts.forgotPassword](http://docs.meteor.com/#/full/accounts_changepassword)
-- [Accounts.resetPassword](http://docs.meteor.com/#/full/accounts_resetpassword)
-- [Accounts.onLogin](http://docs.meteor.com/#/full/accounts_onlogin)
-- [Accounts.onLoginFailure](http://docs.meteor.com/#/full/accounts_onloginfailure)
-- `Accounts._hashPassword` - SHA-256 hashes password, for use with methods that may require authentication
+
+#### `Accounts.createUser(user, callback)`
+Creates a user
+
+**Arguments**
+  * user - The user object
+  * callback - Called with a single error object or null on success
+
+
+#### `Accounts.changePassword(oldPassword, newPassword)`
+Changes a user's password
+
+**Arguments**
+  * oldPassword - The user's current password
+  * newPassword - The user's new password
+
+
+#### `Accounts.onLogin(callback)`
+Registers a callback to be called when user is logged in
+
+**Arguments**
+  * callback
+
+
+#### `Accounts.onLoginFailure(callback)`
+Registers a callback to be called when login fails
+
+**Arguments**
+  * callback
+
+
+#### `Accounts._hashPassword(plaintext)` => `{algorithm:"sha-256", digest:"..."}`
+Hashes a password using the sha-256 algorithm. Returns an object formatted for use in accounts calls. You can access the raw hashed string using the digest property.
+
+**Arguments**
+  * plaintext - The plaintext string you want to hash
+
+Other:
+
+* [Accounts.forgotPassword](http://docs.meteor.com/#/full/accounts_changepassword)
+* [Accounts.resetPassword](http://docs.meteor.com/#/full/accounts_resetpassword)
+
+
+
+## Verbosity
+`import { enableVerbose } from '@ajaybhatia/react-native-meteor';`
+
+Verbose Mode logs detailed information from various places around MeteorRN. **Note:** this will expose login tokens and other private information to the console.
+
+
+#### `enableVerbose()`
+Enables verbose mode

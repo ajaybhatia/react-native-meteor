@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import Tracker from 'trackr';
+import Tracker from '../Tracker.js';
 import Data from '../Data';
 
 export default (trackerFn, deps = []) => {
@@ -19,7 +19,7 @@ export default (trackerFn, deps = []) => {
 
   useEffect(() => {
     stopComputation();
-    Tracker.autorun(currentComputation => {
+    Tracker.autorun((currentComputation) => {
       meteorDataDep.depend();
       computation = currentComputation;
       setResponse(trackerFn());

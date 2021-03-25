@@ -24,7 +24,7 @@ const User = {
     return User._isLoggingIn;
   },
   logout(callback) {
-    Meteor.call('logout', err => {
+    Meteor.call('logout', (err) => {
       User.handleLogout();
       Meteor.connect();
 
@@ -64,7 +64,7 @@ const User = {
 
       User._handleLoginCallback(err, res);
 
-      Meteor.call('removeOtherTokens', err => {
+      Meteor.call('removeOtherTokens', (err) => {
         callback(err);
       });
     });

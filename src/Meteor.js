@@ -1,6 +1,4 @@
-import NetInfo from '@react-native-community/netinfo';
-
-import Trackr from 'trackr';
+import Tracker from './Tracker.js';
 import EJSON from 'ejson';
 import DDP from '../lib/ddp.js';
 import Random from '../lib/Random';
@@ -15,33 +13,27 @@ import useTracker from './components/useTracker';
 
 import ReactiveDict from './ReactiveDict';
 
-import User from './user/User';
-import Accounts from './user/Accounts';
-
 let isVerbose = false;
 
-module.exports = {
+const Meteor = {
   isVerbose,
   enableVerbose() {
     isVerbose = true;
   },
   Random,
-  Accounts,
   Mongo,
-  Tracker: Trackr,
+  Tracker,
   EJSON,
   ReactiveDict,
   Collection,
-  collection(name, options) {
-    console.error('Meteor.collection is deprecated. Use Mongo.Collection');
-    return new Collection(name, options);
+  collection() {
+    throw new Error('Meteor.collection is deprecated. Use Mongo.Collection');
   },
   withTracker,
   useTracker,
   getData() {
     return Data;
   },
-  ...User,
   status() {
     return {
       connected: Data.ddp ? Data.ddp.status == 'connected' : false,
@@ -72,7 +64,7 @@ module.exports = {
     return {
       AsyncStorage:
         Data._options.AsyncStorage ||
-        require('@react-native-community/async-storage').default,
+        require('@react-native-async-storage/async-storage').default,
     };
   },
   connect(endpoint, options) {
@@ -89,7 +81,7 @@ module.exports = {
     }
 
     if (!options.AsyncStorage) {
-      const AsyncStorage = require('@react-native-community/async-storage')
+      const AsyncStorage = require('@react-native-async-storage/async-storage')
         .default;
 
       if (AsyncStorage) {
@@ -110,13 +102,20 @@ module.exports = {
       ...options,
     });
 
-    NetInfo.addEventListener(
-      ({ type, isConnected, isInternetReachable, isWifiEnabled }) => {
-        if (isConnected && Data.ddp.autoReconnect) {
-          Data.ddp.connect();
+    try {
+      const NetInfo = require('@react-native-community/netinfo').default;
+      NetInfo.addEventListener(
+        ({ type, isConnected, isInternetReachable, isWifiEnabled }) => {
+          if (isConnected && Data.ddp.autoReconnect) {
+            Data.ddp.connect();
+          }
         }
-      }
-    );
+      );
+    } catch (e) {
+      console.warn(
+        'Warning: NetInfo not installed, so DDP will not automatically reconnect'
+      );
+    }
 
     Data.ddp.on('connected', () => {
       // Clear the collections of any stale data in case this is a reconnect
@@ -156,7 +155,7 @@ module.exports = {
       lastDisconnect = new Date();
     });
 
-    Data.ddp.on('added', message => {
+    Data.ddp.on('added', (message) => {
       if (!Data.db[message.collection]) {
         Data.db.addCollection(message.collection);
       }
@@ -170,7 +169,7 @@ module.exports = {
       runObservers('added', message.collection, document);
     });
 
-    Data.ddp.on('ready', message => {
+    Data.ddp.on('ready', (message) => {
       const idsMap = new Map();
       for (let i in Data.subscriptions) {
         const sub = Data.subscriptions[i];
@@ -187,10 +186,10 @@ module.exports = {
       }
     });
 
-    Data.ddp.on('changed', message => {
+    Data.ddp.on('changed', (message) => {
       const unset = {};
       if (message.cleared) {
-        message.cleared.forEach(field => {
+        message.cleared.forEach((field) => {
           unset[field] = null;
         });
       }
@@ -212,7 +211,7 @@ module.exports = {
       }
     });
 
-    Data.ddp.on('removed', message => {
+    Data.ddp.on('removed', (message) => {
       if (Data.db[message.collection]) {
         const oldDocument = Data.db[message.collection].findOne({
           _id: message.id,
@@ -221,17 +220,17 @@ module.exports = {
         runObservers('removed', message.collection, oldDocument);
       }
     });
-    Data.ddp.on('result', message => {
-      const call = Data.calls.find(call => call.id == message.id);
+    Data.ddp.on('result', (message) => {
+      const call = Data.calls.find((call) => call.id == message.id);
       if (typeof call.callback == 'function')
         call.callback(message.error, message.result);
       Data.calls.splice(
-        Data.calls.findIndex(call => call.id == message.id),
+        Data.calls.findIndex((call) => call.id == message.id),
         1
       );
     });
 
-    Data.ddp.on('nosub', message => {
+    Data.ddp.on('nosub', (message) => {
       for (let i in Data.subscriptions) {
         const sub = Data.subscriptions[i];
         if (sub.subIdRemember == message.id) {
@@ -312,10 +311,10 @@ module.exports = {
         params: EJSON.clone(params),
         inactive: false,
         ready: false,
-        readyDeps: new Trackr.Dependency(),
+        readyDeps: new Tracker.Dependency(),
         readyCallback: callbacks.onReady,
         stopCallback: callbacks.onStop,
-        stop: function() {
+        stop: function () {
           Data.ddp.unsub(this.subIdRemember);
           delete Data.subscriptions[this.id];
           this.ready && this.readyDeps.changed();
@@ -329,10 +328,10 @@ module.exports = {
 
     // return a handle to the application.
     let handle = {
-      stop: function() {
+      stop: function () {
         if (Data.subscriptions[id]) Data.subscriptions[id].stop();
       },
-      ready: function() {
+      ready: function () {
         if (!Data.subscriptions[id]) return false;
 
         let record = Data.subscriptions[id];
@@ -342,19 +341,19 @@ module.exports = {
       subscriptionId: id,
     };
 
-    if (Trackr.active) {
+    if (Tracker.active) {
       // We're in a reactive computation, so we'd like to unsubscribe when the
       // computation is invalidated... but not if the rerun just re-subscribes
       // to the same subscription!  When a rerun happens, we use onInvalidate
       // as a change to mark the subscription "inactive" so that it can
       // be reused from the rerun.  If it isn't reused, it's killed from
       // an afterFlush.
-      Trackr.onInvalidate(function(c) {
+      Tracker.onInvalidate(function (c) {
         if (Data.subscriptions[id]) {
           Data.subscriptions[id].inactive = true;
         }
 
-        Trackr.afterFlush(function() {
+        Tracker.afterFlush(function () {
           if (Data.subscriptions[id] && Data.subscriptions[id].inactive) {
             handle.stop();
           }
@@ -366,4 +365,4 @@ module.exports = {
   },
 };
 
-export default module.exports;
+export default Meteor;
